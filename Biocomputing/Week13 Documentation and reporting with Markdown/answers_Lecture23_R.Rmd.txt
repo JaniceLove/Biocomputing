@@ -1,0 +1,145 @@
+---
+title: "Answers for Lecture 23 - Practicing Documentation"
+author: "Stuart E. Jones"
+date: "11/15/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problem 1 - Making and filling a dataframe
+
+To make a dataframe it is easiest to make a matrix and then convert it. To be of most use, one wants to define column names as well.
+```{r, echo=TRUE,eval=TRUE}
+x=matrix(1:16,nrow=4)
+df=data.frame(x)
+colnames(df)=c("c1","c2","c3","c4")
+df
+```
+
+## Problem 2 - Making linearly related variables x and y 
+
+Our variables x and y will be linearly related with a slope of 5, y-intercept of 20 and normally distributed error between x and y with a standard deviation of 5 ($y=\beta_0+\beta_1x+\epsilon$; $\epsilon\~N(0,5)$. We can use `runif()` for our dependent variable and `rnorm()` to create our normally distributed noise. To make a scatterplot, we need to put these vectors in a dataframe and load the `ggplot2` package.
+
+```{r, eval=TRUE,echo=TRUE}
+library(ggplot2)
+x=runif(20,0,50)
+
+y=x*5+20+rnorm(length(x),mean=0,sd=5)
+
+df=data.frame(x=x,y=y)
+ggplot(df,aes(x=x,y=y))+geom_point()+theme_classic()
+```
+
+## Problem 4 - Describing logistic growth
+
+Density-dependent growth describes change in a population over time where the growth of the population is limited by some resource or other environmental factor. The maximum rate of growth of the population is described by the parameter $r$ and the limitation of growth is described by the carrying capacity ($K$). If a population begins much below $K$ it will grow rapidly and then growth will begin to slow and the population will slowly approach $K$. If the population begins above $K$, the population size will decline until the population reaches $K$. The equation for density-dependent growth is:
+
+$\frac{dN}{dt} = rN(1-\frac{N}{K})$
+
+**Depiction of the effect of growth rate ($r$)**
+
+```{r, eval=TRUE,echo=TRUE}
+# load required packages
+library(deSolve)
+library(ggplot2)
+
+# define a density-dependent growth function
+ddSim<-function(t,y,p){
+  r=p[1]
+  K=p[2]
+  
+  dydt=r*(1-y/K)*y
+  
+  return(list(dydt))
+}
+
+# set parameters
+y0=10
+K=100
+times=1:100
+
+# set a vector of growth rates to consider and data frame to store output
+rs=c(-0.1,0.1,0.4,0.8,1)
+store_rs=data.frame(time=times,r1=0,r2=0,r3=0,r4=0,r5=0)
+
+# run simulations
+for(i in 1:length(rs)){
+  pars=c(rs[i],K)
+  sim=ode(y=y0,times=times,func=ddSim,parms=pars)
+  store_rs[,(i+1)]=sim[,2]
+}
+
+# plot results
+(ggplot(data=store_rs,aes(x=time,y=r1,color="-0.1"))+geom_line()
++geom_line(aes(x=time,y=r2,color="0.1"))
++geom_line(aes(x=time,y=r3,color="0.4"))
++geom_line(aes(x=time,y=r4,color="0.8"))
++geom_line(aes(x=time,y=r5,color="1.0"))
++theme_classic()+labs(x="time",y="N")
++scale_color_manual(values=c('black','blue','darkgreen','orange','red'))
++theme(legend.title=element_blank()))
+```
+
+As you can see the larger the $r$ the quicker the population reaches $K$. The one excpection being $r=-0.1$, which will approach 0 because of the negative growth rate.
+
+**Depiction of the effects of carrying capacity ($K)**
+
+Carrying capacity ($K$) sets the maximum population size.
+
+```{r,eval=TRUE,echo=TRUE}
+# set parameter values
+y0=1
+r=0.2
+times=1:100
+
+# set range of Ks to consider and dataframe to store results
+Ks=c(10,50,100)
+store_Ks=data.frame(time=times,K1=0,K2=0,K3=0)
+
+# run simulations
+for(i in 1:length(Ks)){
+  pars=c(r,Ks[i])
+  sim=ode(y=y0,times=times,func=ddSim,parms=pars)
+  store_Ks[,(i+1)]=sim[,2]
+}
+
+# plot results
+(ggplot(data=store_Ks,aes(x=time,y=K1,color="10"))+geom_line()
+  +geom_line(aes(x=time,y=K2,color="50"))
+  +geom_line(aes(x=time,y=K3,color="100"))
+  +theme_classic()+labs(x="time",y="N")
+  +scale_color_manual(values=c('black','darkgreen','red'))
+  +theme(legend.title=element_blank()))
+```
+
+**Depicting the effects of initial population size ($N_0$)**
+
+Initial population size will impact the initial dynamics of the population, but it will always approach ($K$).
+
+```{r, eval=TRUE,echo=TRUE}
+# set parameter values
+pars=c(0.1,50)
+times=1:100
+
+# vector of N0s to simulate and dataframe to store results
+N0s=c(1,50,100)
+store_N0s=data.frame(time=times,N1=0,N2=0,N3=0)
+
+# run simulations
+for(i in 1:length(N0s)){
+  y0=N0s[i]
+  sim=ode(y=y0,times=times,func=ddSim,parms=pars)
+  store_N0s[,(i+1)]=sim[,2]
+}
+
+# plot results
+(ggplot(data=store_N0s,aes(x=time,y=N1,color="1"))+geom_line()
+  +geom_line(aes(x=time,y=N2,color="50"))
+  +geom_line(aes(x=time,y=N3,color="100"))
+  +theme_classic()+labs(x="time",y="N")
+  +scale_color_manual(values=c('black','darkgreen','red'))
+  +theme(legend.title=element_blank()))
+```
